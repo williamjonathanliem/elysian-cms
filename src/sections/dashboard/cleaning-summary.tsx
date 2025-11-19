@@ -18,7 +18,8 @@ import {
   Typography,
 } from "@mui/material";
 
-import { getHousekeeping, HousekeepingItem, markRoomClean } from "src/api/client";
+import { getHousekeeping, markRoomClean } from "src/api/client";
+import type { HousekeepingItem } from "src/api/client";
 
 const NEEDS_CLEANING_STATUSES = ["recently_checked_out", "maintenance"];
 
@@ -26,6 +27,7 @@ export default function CleaningSummary() {
   const [items, setItems] = useState<HousekeepingItem[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // load housekeeping list
   useEffect(() => {
     load();
   }, []);
@@ -40,7 +42,7 @@ export default function CleaningSummary() {
     }
   }
 
-  // only rooms that really need cleaning
+  // filter list for rooms needing cleaning
   const roomsToClean = useMemo(
     () => items.filter((item) => NEEDS_CLEANING_STATUSES.includes(item.status)),
     [items],
@@ -49,10 +51,8 @@ export default function CleaningSummary() {
   async function handleMarkClean(roomId: number) {
     try {
       await markRoomClean(roomId);
-      // refresh housekeeping after update
       await load();
     } catch (err) {
-      // optional snackbar later
       console.error(err);
     }
   }
@@ -69,6 +69,7 @@ export default function CleaningSummary() {
           />
         }
       />
+
       <CardContent>
         {loading && items.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
@@ -92,6 +93,7 @@ export default function CleaningSummary() {
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
+
               <TableBody>
                 {roomsToClean.map((item) => (
                   <TableRow key={item.roomId}>
@@ -99,12 +101,8 @@ export default function CleaningSummary() {
                     <TableCell>{item.roomName}</TableCell>
                     <TableCell>{item.lastGuest ?? "-"}</TableCell>
                     <TableCell>{item.lastCheckOut ?? "-"}</TableCell>
-                    <TableCell>
-                      {/* you can compute a real duration later */}
-                      {/* for now it uses the same text you already had, if you stored it */}
-                      {/* if you do not have "since" in HousekeepingItem, you can remove this */}
-                      {"0h"}
-                    </TableCell>
+                    <TableCell>0h</TableCell>
+
                     <TableCell>
                       <Chip
                         label={item.status}
@@ -114,6 +112,7 @@ export default function CleaningSummary() {
                         sx={{ textTransform: "none" }}
                       />
                     </TableCell>
+
                     <TableCell align="right">
                       <Stack direction="row" justifyContent="flex-end">
                         <Button
