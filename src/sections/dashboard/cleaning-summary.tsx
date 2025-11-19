@@ -1,4 +1,5 @@
 // src/sections/dashboard/cleaning-summary.tsx
+import type { HousekeepingItem } from "src/api/client";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -18,8 +19,7 @@ import {
   Typography,
 } from "@mui/material";
 
-import type { HousekeepingItem } from "src/api/client";
-import { getHousekeeping, markRoomClean } from "src/api/client";
+import { markRoomClean, getHousekeeping } from "src/api/client";
 
 const NEEDS_CLEANING_STATUSES = ["recently_checked_out", "maintenance"];
 
