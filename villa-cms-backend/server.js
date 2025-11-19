@@ -18,7 +18,7 @@ const prisma = new PrismaClient();
 dotenv.config();
 
 // ===== CORS, JSON, Cookies =====
-const allowedOrigins = ["http://elysian-cms.vercel.app"];
+const allowedOrigins = ["http://elysian-villa.vercel.app"];
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
