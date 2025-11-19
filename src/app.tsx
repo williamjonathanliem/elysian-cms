@@ -1,59 +1,75 @@
-import 'src/global.css';
+// src/app.tsx
+import "src/global.css";
 
-import { useEffect } from 'react';
+import React, { useEffect } from "react";
+import { varAlpha } from "minimal-shared/utils";
+import { BrowserRouter } from "react-router-dom";
 
-import Fab from '@mui/material/Fab';
+import Box from "@mui/material/Box";
+import LinearProgress, {
+  linearProgressClasses,
+} from "@mui/material/LinearProgress";
 
-import { usePathname } from 'src/routes/hooks';
+import { usePathname } from "src/routes/hooks";
 
-import { ThemeProvider } from 'src/theme/theme-provider';
+import Router from "src/routes";
+import { ThemeProvider } from "src/theme/theme-provider";
 
-import { Iconify } from 'src/components/iconify';
+import { AuthProvider } from "src/auth/AuthProvider";
 
-// ----------------------------------------------------------------------
+console.log("[App] module loaded");
 
-type AppProps = {
-  children: React.ReactNode;
-};
-
-export default function App({ children }: AppProps) {
-  useScrollToTop();
-
-  const githubButton = () => (
-    <Fab
-      size="medium"
-      aria-label="Github"
-      href="https://github.com/minimal-ui-kit/material-kit-react"
+// simple fallback used while lazy routes are loading
+function LoadingFallback() {
+  console.log("[App] LoadingFallback render");
+  return (
+    <Box
       sx={{
-        zIndex: 9,
-        right: 20,
-        bottom: 20,
-        width: 48,
-        height: 48,
-        position: 'fixed',
-        bgcolor: 'grey.800',
+        display: "flex",
+        flex: "1 1 auto",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
       }}
     >
-      <Iconify width={24} icon="socials:github" sx={{ '--color': 'white' }} />
-    </Fab>
-  );
-
-  return (
-    <ThemeProvider>
-      {children}
-      {githubButton()}
-    </ThemeProvider>
+      <LinearProgress
+        sx={{
+          width: 1,
+          maxWidth: 320,
+          bgcolor: (theme) =>
+            varAlpha(theme.vars.palette.text.primaryChannel, 0.16),
+          [`& .${linearProgressClasses.bar}`]: { bgcolor: "text.primary" },
+        }}
+      />
+    </Box>
   );
 }
 
-// ----------------------------------------------------------------------
-
-function useScrollToTop() {
+// scroll to top on route change
+function ScrollToTop() {
   const pathname = usePathname();
 
   useEffect(() => {
+    console.log("[App] scroll to top for path", pathname);
     window.scrollTo(0, 0);
   }, [pathname]);
 
   return null;
+}
+
+export default function App() {
+  console.log("[App] render");
+
+  return (
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <ScrollToTop />
+          <React.Suspense fallback={<LoadingFallback />}>
+            <Router />
+          </React.Suspense>
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
+  );
 }

@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  role      String   @default("owner")
+  createdAt DateTime @default(now())
+}
+
+model Villa {
+  id        Int      @id @default(autoincrement())
+  name      String
+  location  String
+  rooms     Room[]
+  createdAt DateTime @default(now())
+}
+
+model Room {
+  id        Int      @id @default(autoincrement())
+  villaId   Int
+  name      String
+  capacity  Int
+  status    String
+  createdAt DateTime @default(now())
+
+  villa        Villa                @relation(fields: [villaId], references: [id])
+  reservations Reservation[]
+  histories    ReservationHistory[]
+}
+
+model Reservation {
+  id             Int     @id @default(autoincrement())
+  roomId         Int
+  guestName      String
+  nationality    String?
+  passportNumber String?
+  numGuests      Int?
+  source         String?
+  phone          String?
+  email          String?
+  notes          String?
+  paymentMethod  String?
+
+  checkIn  DateTime
+  checkOut DateTime
+  status   String   @default("booked")
+
+  room      Room     @relation(fields: [roomId], references: [id])
+  createdAt DateTime @default(now())
+
+  histories ReservationHistory[]
+}
+
+model ReservationHistory {
+  id               Int      @id @default(autoincrement())
+  reservationId    Int
+  roomId           Int
+  guestName        String
+  checkIn          DateTime
+  checkOut         DateTime
+  statusAtCheckout String
+  createdAt        DateTime @default(now())
+
+  reservation Reservation @relation(fields: [reservationId], references: [id])
+  room        Room        @relation(fields: [roomId], references: [id])
+}

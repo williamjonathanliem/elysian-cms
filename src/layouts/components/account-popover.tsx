@@ -1,20 +1,22 @@
-import type { IconButtonProps } from '@mui/material/IconButton';
+import type { IconButtonProps } from "@mui/material/IconButton";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback } from "react";
 
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Avatar from '@mui/material/Avatar';
-import Popover from '@mui/material/Popover';
-import Divider from '@mui/material/Divider';
-import MenuList from '@mui/material/MenuList';
-import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
-import MenuItem, { menuItemClasses } from '@mui/material/MenuItem';
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Avatar from "@mui/material/Avatar";
+import Popover from "@mui/material/Popover";
+import Divider from "@mui/material/Divider";
+import MenuList from "@mui/material/MenuList";
+import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import MenuItem, { menuItemClasses } from "@mui/material/MenuItem";
 
-import { useRouter, usePathname } from 'src/routes/hooks';
+import { useRouter, usePathname } from "src/routes/hooks";
 
-import { _myAccount } from 'src/_mock';
+import { Iconify } from "src/components/iconify";
+
+import { useAuth } from "src/auth/AuthProvider";
 
 // ----------------------------------------------------------------------
 
@@ -29,8 +31,8 @@ export type AccountPopoverProps = IconButtonProps & {
 
 export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps) {
   const router = useRouter();
-
   const pathname = usePathname();
+  const { logout, user } = useAuth();
 
   const [openPopover, setOpenPopover] = useState<HTMLButtonElement | null>(null);
 
@@ -47,25 +49,41 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
       handleClosePopover();
       router.push(path);
     },
-    [handleClosePopover, router]
+    [handleClosePopover, router],
   );
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await logout();
+      router.push("/auth/sign-in");
+    } catch (err) {
+      console.error("Logout error", err);
+    } finally {
+      handleClosePopover();
+    }
+  }, [logout, router, handleClosePopover]);
 
   return (
     <>
       <IconButton
         onClick={handleOpenPopover}
         sx={{
-          p: '2px',
+          p: "2px",
           width: 40,
           height: 40,
+          borderRadius: "50%",
           background: (theme) =>
             `conic-gradient(${theme.vars.palette.primary.light}, ${theme.vars.palette.warning.light}, ${theme.vars.palette.primary.light})`,
           ...sx,
         }}
         {...other}
       >
-        <Avatar src={_myAccount.photoURL} alt={_myAccount.displayName} sx={{ width: 1, height: 1 }}>
-          {_myAccount.displayName.charAt(0).toUpperCase()}
+        <Avatar
+          src="/assets/images/avatar/avatar-1.png"
+          alt={user?.username || "User"}
+          sx={{ width: 1, height: 1 }}
+        >
+          {(user?.username || "U").charAt(0).toUpperCase()}
         </Avatar>
       </IconButton>
 
@@ -73,8 +91,8 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
         open={!!openPopover}
         anchorEl={openPopover}
         onClose={handleClosePopover}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
         slotProps={{
           paper: {
             sx: { width: 200 },
@@ -83,37 +101,38 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
       >
         <Box sx={{ p: 2, pb: 1.5 }}>
           <Typography variant="subtitle2" noWrap>
-            {_myAccount?.displayName}
+            {user?.username || "User"}
           </Typography>
 
-          <Typography variant="body2" sx={{ color: 'text.secondary' }} noWrap>
-            {_myAccount?.email}
+          <Typography variant="body2" sx={{ color: "text.secondary" }} noWrap>
+            Sistem Villa CMS
           </Typography>
         </Box>
 
-        <Divider sx={{ borderStyle: 'dashed' }} />
+        <Divider sx={{ borderStyle: "dashed" }} />
 
         <MenuList
           disablePadding
           sx={{
             p: 1,
             gap: 0.5,
-            display: 'flex',
-            flexDirection: 'column',
+            display: "flex",
+            flexDirection: "column",
             [`& .${menuItemClasses.root}`]: {
               px: 1,
               gap: 2,
               borderRadius: 0.75,
-              color: 'text.secondary',
-              '&:hover': { color: 'text.primary' },
+              color: "text.secondary",
+              "&:hover": { color: "text.primary" },
               [`&.${menuItemClasses.selected}`]: {
-                color: 'text.primary',
-                bgcolor: 'action.selected',
-                fontWeight: 'fontWeightSemiBold',
+                color: "text.primary",
+                bgcolor: "action.selected",
+                fontWeight: "fontWeightSemiBold",
               },
             },
           }}
         >
+          {/* existing config items, for now Home */}
           {data.map((option) => (
             <MenuItem
               key={option.label}
@@ -124,12 +143,32 @@ export function AccountPopover({ data = [], sx, ...other }: AccountPopoverProps)
               {option.label}
             </MenuItem>
           ))}
+
+          {/* Accounts only for admin, between Home and Logout */}
+          {user?.role === "admin" && (
+            <MenuItem
+              selected={pathname === "/account"}
+              onClick={() => handleClickItem("/account")}
+            >
+              <Iconify
+                width={22}
+                icon={"solar:users-group-two-rounded-bold-duotone" as any}
+              />
+              Accounts
+            </MenuItem>
+          )}
         </MenuList>
 
-        <Divider sx={{ borderStyle: 'dashed' }} />
+        <Divider sx={{ borderStyle: "dashed" }} />
 
         <Box sx={{ p: 1 }}>
-          <Button fullWidth color="error" size="medium" variant="text">
+          <Button
+            fullWidth
+            color="error"
+            size="medium"
+            variant="text"
+            onClick={handleLogout}
+          >
             Logout
           </Button>
         </Box>

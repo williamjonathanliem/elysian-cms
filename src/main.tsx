@@ -1,29 +1,25 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { Outlet, RouterProvider, createBrowserRouter } from 'react-router';
+// src/main.tsx
+import React from "react";
+import ReactDOM from "react-dom/client";
 
-import App from './app';
-import { routesSection } from './routes/sections';
-import { ErrorBoundary } from './routes/components';
+import App from "./app";
 
-// ----------------------------------------------------------------------
+console.log("[main] starting app");
 
-const router = createBrowserRouter([
-  {
-    Component: () => (
-      <App>
-        <Outlet />
-      </App>
-    ),
-    errorElement: <ErrorBoundary />,
-    children: routesSection,
-  },
-]);
+const rootElement = document.getElementById("root");
 
-const root = createRoot(document.getElementById('root')!);
+if (!rootElement) {
+  console.error("[main] no #root element found in index.html");
+} else {
+  console.log("[main] found #root, creating React root");
 
-root.render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>
-);
+  const root = ReactDOM.createRoot(rootElement);
+
+  root.render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  );
+
+  console.log("[main] render() called");
+}
