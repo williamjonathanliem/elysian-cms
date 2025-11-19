@@ -37,6 +37,7 @@
     "@mui/icons-material": "^7.3.5",
     "@mui/lab": "^7.0.0-beta.10",
     "@mui/material": "^7.0.1",
+    "@supabase/supabase-js": "^2.83.0",
     "apexcharts": "^4.5.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",

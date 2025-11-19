@@ -1,43 +1,5 @@
 // src/api/client.ts
-import axios from "axios";
-
-const BASE_URL = import.meta.env.VITE_API_URL;
-if (!BASE_URL) {
-  throw new Error("VITE_API_URL is not set");
-}
-
-export const api = axios.create({
-  baseURL: BASE_URL,
-  withCredentials: true,
-});
-
-// auth
-export async function fetchMe() {
-  const { data } = await api.get("/api/auth/me");
-  return data.user as { id: number, username: string, role: string };
-}
-export async function login(username: string, password: string) {
-  const { data } = await api.post("/api/login", { username, password });
-  return data.user as { id: number, username: string, role: string };
-}
-export async function logout() {
-  await api.post("/api/logout");
-}
-
-async function http<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    ...options,
-    credentials: "include",
-  });
-  if (!res.ok) {
-    throw new Error(`Request failed ${res.status}`);
-  }
-  return res.json() as Promise<T>;
-}
+import { supabase } from "../lib/supabaseClient";
 
 // Types
 export interface Villa {
@@ -51,7 +13,7 @@ export interface Room {
   name: string;
   capacity: number;
   status: string;
-  villa: Villa;
+  villaId: number;
 }
 
 export interface Reservation {
@@ -68,11 +30,76 @@ export interface Reservation {
   checkIn: string;
   checkOut: string;
   status: string;
-  room: Room;
+  roomId: number;
+}
+
+// Rooms
+export async function getRooms() {
+  const { data, error } = await supabase
+    .from("rooms")
+    .select("*, villas(*)");
+
+  if (error) throw error;
+  return data as Room[];
+}
+
+export async function createRoom(payload: {
+  villaId: number;
+  name: string;
+  capacity: number;
+}) {
+  const { data, error } = await supabase
+    .from("rooms")
+    .insert([{ ...payload, status: "available" }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Room;
+}
+
+export async function updateRoom(id: number, payload: Partial<Room>) {
+  const { data, error } = await supabase
+    .from("rooms")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Room;
+}
+
+export async function deleteRoom(id: number) {
+  const { error } = await supabase
+    .from("rooms")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+// Villas
+export async function getVillas() {
+  const { data, error } = await supabase
+    .from("villas")
+    .select("*");
+
+  if (error) throw error;
+  return data as Villa[];
 }
 
 // Reservations
-export function createReservation(data: {
+export async function getReservations() {
+  const { data, error } = await supabase
+    .from("reservations")
+    .select("*, rooms(*, villas(*))");
+
+  if (error) throw error;
+  return data as Reservation[];
+}
+
+export async function createReservation(payload: {
   roomId: number;
   guestName: string;
   checkIn: string;
@@ -86,96 +113,41 @@ export function createReservation(data: {
   notes?: string;
   paymentMethod?: string;
 }) {
-  return http<Reservation>("/api/reservations", {
-    method: "POST",
-    body: JSON.stringify({ ...data, status: "booked" }),
-  });
+  const { data, error } = await supabase
+    .from("reservations")
+    .insert([{ ...payload, status: "booked" }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Reservation;
 }
 
-// Housekeeping
-export interface HousekeepingItem {
-  roomId: number;
-  roomName: string;
-  villaName: string;
-  status: string;
-  lastGuest: string | null;
-  lastCheckOut: string | null;
+export async function checkInReservation(id: number) {
+  const { data, error } = await supabase
+    .from("reservations")
+    .update({ status: "checked in" })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Reservation;
 }
 
-// Dashboard + housekeeping
-export interface DashboardSummary {
-  totalRooms: number;
-  occupiedRooms: number;
-  reservationsToday: any[];
+export async function checkOutReservation(id: number) {
+  const { data, error } = await supabase
+    .from("reservations")
+    .update({ status: "checked out" })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Reservation;
 }
 
-export function getDashboard() {
-  return http<DashboardSummary>("/api/dashboard");
-}
-
-export function getRooms() {
-  return http<Room[]>("/api/rooms");
-}
-
-export function getReservations() {
-  return http<Reservation[]>("/api/reservations");
-}
-
-export function getVillas() {
-  return http<Villa[]>("/api/villas");
-}
-
-export function markRoomClean(roomId: number) {
-  return http<Room>(`/api/rooms/${roomId}/clean`, { method: "PUT" });
-}
-
-export function createRoom(data: {
-  villaId: number;
-  name: string;
-  capacity: number;
-}) {
-  return http<Room>("/api/rooms", {
-    method: "POST",
-    body: JSON.stringify({ ...data, status: "available" }),
-  });
-}
-
-export function updateRoom(id: number, data: Partial<Room>) {
-  return http<Room>(`/api/rooms/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-}
-
-export function deleteRoom(id: number) {
-  return http<void>(`/api/rooms/${id}`, {
-    method: "DELETE",
-  });
-}
-
-export function checkInReservation(id: number) {
-  return http<Reservation>(`/api/reservations/${id}/checkin`, {
-    method: "PUT",
-  });
-}
-
-export function checkOutReservation(id: number) {
-  return http<Reservation>(`/api/reservations/${id}/checkout`, {
-    method: "PUT",
-  });
-}
-
-export function getHousekeeping() {
-  return http<HousekeepingItem[]>("/api/housekeeping");
-}
-
-export function getReservationsRange(startISO: string, endISO: string) {
-  const q = new URLSearchParams({ start: startISO, end: endISO }).toString();
-  return http<Reservation[]>(`/api/reservations?${q}`);
-}
-
-// - - - User accounts (admin only) - - -
-
+// Users
 export interface UserAccount {
   id: number;
   username: string;
@@ -183,37 +155,50 @@ export interface UserAccount {
   createdAt: string;
 }
 
-export function getUsers() {
-  return http<UserAccount[]>('/api/users');
+export async function getUsers() {
+  const { data, error } = await supabase
+    .from("users")
+    .select("*");
+
+  if (error) throw error;
+  return data as UserAccount[];
 }
 
-export function createUserAccount(payload: {
+export async function createUserAccount(payload: {
   username: string;
   password: string;
   role: string;
 }) {
-  return http<UserAccount>('/api/users', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  const { data, error } = await supabase
+    .from("users")
+    .insert([payload])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as UserAccount;
 }
 
-export function updateUserAccount(
+export async function updateUserAccount(
   id: number,
-  payload: {
-    username?: string;
-    password?: string;
-    role?: string;
-  },
+  payload: Partial<UserAccount>
 ) {
-  return http<UserAccount>(`/api/users/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
+  const { data, error } = await supabase
+    .from("users")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as UserAccount;
 }
 
-export function deleteUserAccount(id: number) {
-  return http<void>(`/api/users/${id}`, {
-    method: 'DELETE',
-  });
+export async function deleteUserAccount(id: number) {
+  const { error } = await supabase
+    .from("users")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
 }
