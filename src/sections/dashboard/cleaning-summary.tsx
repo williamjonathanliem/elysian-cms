@@ -18,8 +18,8 @@ import {
   Typography,
 } from "@mui/material";
 
-import { getHousekeeping, markRoomClean } from "src/api/client";
 import type { HousekeepingItem } from "src/api/client";
+import { getHousekeeping, markRoomClean } from "src/api/client";
 
 const NEEDS_CLEANING_STATUSES = ["recently_checked_out", "maintenance"];
 
