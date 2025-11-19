@@ -146,10 +146,19 @@ export function OverviewAnalyticsView() {
   async function load() {
     try {
       const [dash, hk] = await Promise.all([getDashboard(), getHousekeeping()]);
+
       setTotalRooms(dash.totalRooms || 0);
       setOccupiedRooms(dash.occupiedRooms || 0);
       setStayingToday((dash.reservationsToday || []).length);
-      setToClean((hk || []).length);
+
+      // count only rooms that really need cleaning
+      const needsCleaningStatuses = ["recently_checked_out", "maintenance"];
+
+      const toCleanCount = (hk || []).filter((item) =>
+        needsCleaningStatuses.includes(item.status),
+      ).length;
+
+      setToClean(toCleanCount);
     } catch {
       // optional snackbar later
     }
