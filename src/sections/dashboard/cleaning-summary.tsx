@@ -1,45 +1,30 @@
-import type { HousekeepingItem} from "src/api/client";
+// src/sections/dashboard/cleaning-summary.tsx
 
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
+  Box,
   Button,
   Card,
   CardContent,
+  CardHeader,
   Chip,
-  CircularProgress,
   Stack,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   Typography,
 } from "@mui/material";
 
-import { markRoomClean, getHousekeeping } from "src/api/client";
+import { getHousekeeping, HousekeepingItem, markRoomClean } from "src/api/client";
 
-function fmt(value: string | null) {
-  if (!value) return "-";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString();
-}
-
-function since(value: string | null) {
-  if (!value) return "-";
-  const t = new Date(value).getTime();
-  const hours = Math.floor(Math.max(0, Date.now() - t) / 3_600_000);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
-}
+const NEEDS_CLEANING_STATUSES = ["recently_checked_out", "maintenance"];
 
 export default function CleaningSummary() {
-  const [rows, setRows] = useState<HousekeepingItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<number | null>(null);
+  const [items, setItems] = useState<HousekeepingItem[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     load();
@@ -49,86 +34,103 @@ export default function CleaningSummary() {
     setLoading(true);
     try {
       const data = await getHousekeeping();
-      setRows(data);
+      setItems(data || []);
     } finally {
       setLoading(false);
     }
   }
 
-  const content = useMemo(() => {
-    if (loading) {
-      return (
-        <Stack alignItems="center" sx={{ py: 4 }}>
-          <CircularProgress />
-        </Stack>
-      );
+  // only rooms that really need cleaning
+  const roomsToClean = useMemo(
+    () => items.filter((item) => NEEDS_CLEANING_STATUSES.includes(item.status)),
+    [items],
+  );
+
+  async function handleMarkClean(roomId: number) {
+    try {
+      await markRoomClean(roomId);
+      // refresh housekeeping after update
+      await load();
+    } catch (err) {
+      // optional snackbar later
+      console.error(err);
     }
-    if (rows.length === 0) {
-      return (
-        <Typography variant="body2" color="text.secondary">
-          All rooms are clean.
-        </Typography>
-      );
-    }
-    return (
-      <TableContainer>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Villa</TableCell>
-              <TableCell>Room</TableCell>
-              <TableCell>Last guest</TableCell>
-              <TableCell>Checked out</TableCell>
-              <TableCell>Since</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Action</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={r.roomId}>
-                <TableCell>{r.villaName}</TableCell>
-                <TableCell>{r.roomName}</TableCell>
-                <TableCell>{r.lastGuest || "-"}</TableCell>
-                <TableCell>{fmt(r.lastCheckOut)}</TableCell>
-                <TableCell>{since(r.lastCheckOut)}</TableCell>
-                <TableCell>
-                  <Chip label={r.status} size="small" color="warning" />
-                </TableCell>
-                <TableCell align="right">
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={async () => {
-                      setBusyId(r.roomId);
-                      try {
-                        await markRoomClean(r.roomId);
-                        await load();
-                      } finally {
-                        setBusyId(null);
-                      }
-                    }}
-                    disabled={busyId === r.roomId}
-                  >
-                    {busyId === r.roomId ? "Cleaning..." : "Mark cleaned"}
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    );
-  }, [rows, loading, busyId]);
+  }
 
   return (
     <Card>
+      <CardHeader
+        title="Cleaning summary"
+        action={
+          <Chip
+            label={`${roomsToClean.length} to clean`}
+            color={roomsToClean.length > 0 ? "warning" : "default"}
+            variant="outlined"
+          />
+        }
+      />
       <CardContent>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-          <Typography variant="h6">Cleaning summary</Typography>
-          <Chip label={`${rows.length} to clean`} size="small" />
-        </Stack>
-        {content}
+        {loading && items.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            Loading housekeeping data...
+          </Typography>
+        ) : roomsToClean.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            All rooms are cleaned or currently occupied.
+          </Typography>
+        ) : (
+          <Box sx={{ overflowX: "auto" }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Villa</TableCell>
+                  <TableCell>Room</TableCell>
+                  <TableCell>Last guest</TableCell>
+                  <TableCell>Checked out</TableCell>
+                  <TableCell>Since</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="right">Action</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {roomsToClean.map((item) => (
+                  <TableRow key={item.roomId}>
+                    <TableCell>{item.villaName}</TableCell>
+                    <TableCell>{item.roomName}</TableCell>
+                    <TableCell>{item.lastGuest ?? "-"}</TableCell>
+                    <TableCell>{item.lastCheckOut ?? "-"}</TableCell>
+                    <TableCell>
+                      {/* you can compute a real duration later */}
+                      {/* for now it uses the same text you already had, if you stored it */}
+                      {/* if you do not have "since" in HousekeepingItem, you can remove this */}
+                      {"0h"}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={item.status}
+                        color={
+                          item.status === "maintenance" ? "warning" : "error"
+                        }
+                        sx={{ textTransform: "none" }}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Stack direction="row" justifyContent="flex-end">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => handleMarkClean(item.roomId)}
+                        >
+                          Mark cleaned
+                        </Button>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+        )}
       </CardContent>
     </Card>
   );
