@@ -4,7 +4,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Supabase env variables are not set");
+  throw new Error("Supabase env vars are not set");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
